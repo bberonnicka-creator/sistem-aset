@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pengurusan Aset Enterprise</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            .print-container {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            table {
+                font-size: 11px !important;
+            }
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-brand-600 rounded-lg text-white">
+                        <i data-lucide="box" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-wide">SPA Enterprise</h1>
+                        <p class="text-xs text-slate-400">Sistem Pengurusan Aset</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="openModal('add')" class="bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-lg text-sm flex items-center shadow-sm transition-all duration-200 hover:shadow">
+                        <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i>
+                        Tambah Aset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print-container">
+        
+        <!-- Header Page Info -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 pb-4 border-b border-slate-200 gap-4 no-print">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-900">Dashboard & Senarai Aset</h2>
+                <p class="text-sm text-slate-500 mt-0.5">Pengurusan inventori, maklumat nilai, dan status semasa aset organisasi.</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="exportToCSV()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center transition shadow-sm">
+                    <i data-lucide="download" class="w-4 h-4 mr-2 text-slate-500"></i>
+                    Eksport CSV
+                </button>
+                <button onclick="window.print()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center transition shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4 mr-2 text-slate-500"></i>
+                    Cetak Laporan
+                </button>
+            </div>
+        </div>
+
+        <!-- Print Header (Visible only when printing) -->
+        <div class="hidden print:block mb-6 border-b pb-4">
+            <h1 class="text-2xl font-bold text-slate-900">Laporan Senarai Aset Organisasi</h1>
+            <p class="text-sm text-slate-600">Tarikh Cetakan: <span id="printDate"></span></p>
+        </div>
+
+        <!-- Summary Statistics Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 no-print">
+            <!-- Total Assets -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Jumlah Aset</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="statTotalCount">0</h3>
+                    </div>
+                    <div class="p-3 bg-slate-100 rounded-lg text-slate-700">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Value -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nilai Aset (RM)</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="statTotalValue">RM 0.00</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-lg text-emerald-600">
+                        <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Good Condition -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Berfungsi (Baik)</p>
+                        <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="statGoodCount">0</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-lg text-emerald-600">
+                        <i data-lucide="check-circle" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maintenance -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Penyelenggaraan</p>
+                        <h3 class="text-2xl font-bold text-amber-600 mt-1" id="statMaintCount">0</h3>
+                    </div>
+                    <div class="p-3 bg-amber-50 rounded-lg text-amber-600">
+                        <i data-lucide="wrench" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Damaged -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-rose-600 uppercase tracking-wider">Rosak</p>
+                        <h3 class="text-2xl font-bold text-rose-600 mt-1" id="statDamagedCount">0</h3>
+                    </div>
+                    <div class="p-3 bg-rose-50 rounded-lg text-rose-600">
+                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Search Toolbar -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 no-print">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+                <!-- Search input -->
+                <div class="lg:col-span-5 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </div>
+                    <input type="text" id="searchInput" oninput="filterAssets()" placeholder="Cari nama, no. siri, atau lokasi..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                </div>
+
+                <!-- Category filter -->
+                <div class="lg:col-span-3">
+                    <select id="categoryFilter" onchange="filterAssets()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-white">
+                        <option value="">Semua Kategori</option>
+                        <option value="Elektronik & IT">Elektronik & IT</option>
+                        <option value="Perabot">Perabot</option>
+                        <option value="Peralatan Pejabat">Peralatan Pejabat</option>
+                        <option value="Kenderaan">Kenderaan</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+
+                <!-- Status filter -->
+                <div class="lg:col-span-3">
+                    <select id="statusFilter" onchange="filterAssets()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-white">
+                        <option value="">Semua Status</option>
+                        <option value="Baik">Baik</option>
+                        <option value="Penyelenggaraan">Penyelenggaraan</option>
+                        <option value="Rosak">Rosak</option>
+                    </select>
+                </div>
+
+                <!-- Reset button -->
+                <div class="lg:col-span-1 flex items-center">
+                    <button onclick="resetFilters()" title="Set Semula Tapisan" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition flex items-center justify-center">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Container -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead class="bg-slate-100 text-slate-700 font-semibold uppercase text-xs tracking-wider border-b border-slate-200">
+                        <tr>
+                            <th class="py-3.5 px-4">Aset</th>
+                            <th class="py-3.5 px-4">Kategori</th>
+                            <th class="py-3.5 px-4">No. Siri</th>
+                            <th class="py-3.5 px-4">Lokasi</th>
+                            <th class="py-3.5 px-4">Tarikh Beli</th>
+                            <th class="py-3.5 px-4">Harga (RM)</th>
+                            <th class="py-3.5 px-4">Status</th>
+                            <th class="py-3.5 px-4 text-center no-print">Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetTableBody" class="divide-y divide-slate-200">
+                        <!-- Dynamic Rows Injection -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State View -->
+            <div id="emptyState" class="hidden text-center py-12 px-4">
+                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="inbox" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-base font-semibold text-slate-800">Tiada Data Aset Ditemui</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-sm mx-auto">Cuba ubah kata kunci carian anda atau tambah rekod aset baru ke dalam sistem.</p>
+            </div>
+        </div>
+
+        <!-- Record Count Info -->
+        <div class="mt-4 flex justify-between items-center text-xs text-slate-500 no-print">
+            <span id="recordCountText">Menunjukkan 0 daripada 0 rekod</span>
+            <button onclick="restoreDemoData()" class="hover:underline text-brand-600">Muat Semula Data Demo</button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto no-print">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            &copy; 2026 Sistem Pengurusan Aset Enterprise. Hak Cipta Terelihara.
+        </div>
+    </footer>
+
+    <!-- Asset Form Modal (Add / Edit) -->
+    <div id="assetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all my-8">
+            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between text-white">
+                <h3 id="modalTitle" class="font-bold text-lg">Tambah Aset Baru</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="assetForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="assetId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Nama Aset *</label>
+                    <input type="text" id="assetName" required placeholder="cth: Laptop Dell XPS 15" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Kategori *</label>
+                        <select id="assetCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
+                            <option value="">Pilih Kategori</option>
+                            <option value="Elektronik & IT">Elektronik & IT</option>
+                            <option value="Perabot">Perabot</option>
+                            <option value="Peralatan Pejabat">Peralatan Pejabat</option>
+                            <option value="Kenderaan">Kenderaan</option>
+                            <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Nombor Siri / Tag *</label>
+                        <input type="text" id="assetSerial" required placeholder="cth: LAP-2024-001" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Lokasi *</label>
+                        <input type="text" id="assetLocation" required placeholder="cth: Bilik IT / Tingkat 2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Status *</label>
+                        <select id="assetStatus" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
+                            <option value="Baik">Baik</option>
+                            <option value="Penyelenggaraan">Penyelenggaraan</option>
+                            <option value="Rosak">Rosak</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Tarikh Pembelian</label>
+                        <input type="date" id="assetPurchaseDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Harga Aset (RM) *</label>
+                        <input type="number" step="0.01" id="assetPrice" min="0" required placeholder="0.00" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Catatan / Penerangan</label>
+                    <textarea id="assetNotes" rows="2" placeholder="Catatan spesifikasi atau keadaan fizikal aset..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-medium transition shadow-sm">Simpan Aset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Asset Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all my-8">
+            <div class="bg-slate-100 px-6 py-4 flex items-center justify-between border-b border-slate-200">
+                <h3 class="font-bold text-lg text-slate-800">Butiran Aset</h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div>
+                        <span id="detailBadge" class="inline-block mb-1"></span>
+                        <h2 id="detailName" class="text-xl font-bold text-slate-900">--</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-500 block">Harga Pembelian</span>
+                        <span id="detailPrice" class="text-lg font-bold text-brand-700">RM 0.00</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <span class="text-xs text-slate-400 block font-medium">Kategori</span>
+                        <span id="detailCategory" class="font-semibold text-slate-800">--</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <span class="text-xs text-slate-400 block font-medium">Nombor Siri / Tag</span>
+                        <span id="detailSerial" class="font-semibold text-slate-800">--</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <span class="text-xs text-slate-400 block font-medium">Lokasi Penempatan</span>
+                        <span id="detailLocation" class="font-semibold text-slate-800">--</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <span class="text-xs text-slate-400 block font-medium">Tarikh Pembelian</span>
+                        <span id="detailDate" class="font-semibold text-slate-800">--</span>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="text-xs text-slate-400 block font-medium mb-1">Catatan</span>
+                    <p id="detailNotes" class="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm text-slate-700 italic min-h-[60px]">--</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border border-slate-700">
+            <div id="toastIcon"></div>
+            <span id="toastMessage" class="text-sm font-medium">Notifikasi</span>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Default Demo Data
+        const initialDemoAssets = [
+            {
+                id: "AST-1001",
+                name: "Laptop Dell Latitude 5420",
+                category: "Elektronik & IT",
+                serialNo: "DELL-LAT-8842",
+                location: "Bilik IT",
+                purchaseDate: "2023-03-15",
+                price: 4250.00,
+                status: "Baik",
+                notes: "Diperuntukkan untuk pegawai sokongan teknik."
+            },
+            {
+                id: "AST-1002",
+                name: "Projektor Epson EB-X06",
+                category: "Elektronik & IT",
+                serialNo: "EPS-PRJ-3021",
+                location: "Bilik Mesyuarat Utama",
+                purchaseDate: "2022-08-10",
+                price: 2100.00,
+                status: "Penyelenggaraan",
+                notes: "Mentol mula malap, sedang menunggu alat ganti."
+            },
+            {
+                id: "AST-1003",
+                name: "Penghawa Dingin Acson 2.0HP",
+                category: "Peralatan Pejabat",
+                serialNo: "ACS-AC-9901",
+                location: "Pejabat Pengarah",
+                purchaseDate: "2021-05-20",
+                price: 3150.00,
+                status: "Baik",
+                notes: "Servis berkala kali terakhir pada bulan lepas."
+            },
+            {
+                id: "AST-1004",
+                name: "Kerusi Eksekutif Ergonomik",
+                category: "Perabot",
+                serialNo: "FUR-CHR-104",
+                location: "Bilik Pentadbiran",
+                purchaseDate: "2023-01-12",
+                price: 650.00,
+                status: "Rosak",
+                notes: "Roda patah dan tuil pelaras tinggi rosak."
+            },
+            {
+                id: "AST-1005",
+                name: "Pencetak HP LaserJet Pro",
+                category: "Elektronik & IT",
+                serialNo: "HP-LJP-4412",
+                location: "Kaunter Utama",
+                purchaseDate: "2023-11-05",
+                price: 1850.00,
+                status: "Baik",
+                notes: "Digunakan untuk cetakan dokumen harian."
+            }
+        ];
+
+        // Store active data in state
+        let assets = [];
+
+        // Application Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAssets();
+            document.getElementById('printDate').textContent = new Date().toLocaleDateString('ms-MY', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+        });
+
+        // Load data from LocalStorage or initialize default
+        function loadAssets() {
+            const stored = localStorage.getItem('spa_enterprise_assets');
+            if (stored) {
+                try {
+                    assets = JSON.parse(stored);
+                } catch (e) {
+                    assets = [...initialDemoAssets];
+                }
+            } else {
+                assets = [...initialDemoAssets];
+                saveAssets();
+            }
+            renderTable();
+            updateStats();
+        }
+
+        // Save data to LocalStorage
+        function saveAssets() {
+            localStorage.setItem('spa_enterprise_assets', JSON.stringify(assets));
+        }
+
+        // Restore Demo Data
+        function restoreDemoData() {
+            if (confirm("Adakah anda pasti ingin memuat semula data demo? Semua perubahan semasa akan digantikan.")) {
+                assets = [...initialDemoAssets];
+                saveAssets();
+                renderTable();
+                updateStats();
+                showToast("Data demo berjaya dimuat semula!");
+            }
+        }
+
+        // Render Table Rows
+        function renderTable() {
+            const tbody = document.getElementById('assetTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const recordText = document.getElementById('recordCountText');
+
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+            const categoryVal = document.getElementById('categoryFilter').value;
+            const statusVal = document.getElementById('statusFilter').value;
+
+            // Filter logic
+            const filteredAssets = assets.filter(asset => {
+                const matchesSearch = asset.name.toLowerCase().includes(searchVal) ||
+                                     asset.serialNo.toLowerCase().includes(searchVal) ||
+                                     asset.location.toLowerCase().includes(searchVal);
+                const matchesCategory = categoryVal === "" || asset.category === categoryVal;
+                const matchesStatus = statusVal === "" || asset.status === statusVal;
+
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+
+            tbody.innerHTML = '';
+
+            if (filteredAssets.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                filteredAssets.forEach(asset => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50/80 transition text-slate-700 border-b border-slate-100";
+
+                    // Status Badge Styling
+                    let statusBadge = "";
+                    if (asset.status === 'Baik') {
+                        statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center w-max"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Baik</span>`;
+                    } else if (asset.status === 'Penyelenggaraan') {
+                        statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center w-max"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>Penyelenggaraan</span>`;
+                    } else {
+                        statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center w-max"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>Rosak</span>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(asset.name)}</td>
+                        <td class="py-3 px-4 text-slate-600">${escapeHtml(asset.category)}</td>
+                        <td class="py-3 px-4 font-mono text-xs text-slate-500">${escapeHtml(asset.serialNo)}</td>
+                        <td class="py-3 px-4 text-slate-600">${escapeHtml(asset.location)}</td>
+                        <td class="py-3 px-4 text-slate-500 text-xs">${asset.purchaseDate ? formatDate(asset.purchaseDate) : '-'}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-800">RM ${parseFloat(asset.price || 0).toLocaleString('ms-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="py-3 px-4">${statusBadge}</td>
+                        <td class="py-3 px-4 text-center no-print">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="viewAsset('${asset.id}')" title="Lihat Butiran" class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="openModal('edit', '${asset.id}')" title="Kemaskini" class="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteAsset('${asset.id}')" title="Hapus Aset" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            recordText.textContent = `Menunjukkan ${filteredAssets.length} daripada ${assets.length} rekod aset`;
+            lucide.createIcons();
+        }
+
+        // Update Dashboard Cards
+        function updateStats() {
+            const totalCount = assets.length;
+            const totalValue = assets.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+            const goodCount = assets.filter(a => a.status === 'Baik').length;
+            const maintCount = assets.filter(a => a.status === 'Penyelenggaraan').length;
+            const damagedCount = assets.filter(a => a.status === 'Rosak').length;
+
+            document.getElementById('statTotalCount').textContent = totalCount;
+            document.getElementById('statTotalValue').textContent = "RM " + totalValue.toLocaleString('ms-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('statGoodCount').textContent = goodCount;
+            document.getElementById('statMaintCount').textContent = maintCount;
+            document.getElementById('statDamagedCount').textContent = damagedCount;
+        }
+
+        // Filter trigger
+        function filterAssets() {
+            renderTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            renderTable();
+        }
+
+        // Modal Operations
+        function openModal(mode, assetId = null) {
+            const modal = document.getElementById('assetModal');
+            const form = document.getElementById('assetForm');
+            const title = document.getElementById('modalTitle');
+
+            form.reset();
+
+            if (mode === 'edit' && assetId) {
+                const asset = assets.find(a => a.id === assetId);
+                if (asset) {
+                    title.textContent = "Kemaskini Maklumat Aset";
+                    document.getElementById('assetId').value = asset.id;
+                    document.getElementById('assetName').value = asset.name;
+                    document.getElementById('assetCategory').value = asset.category;
+                    document.getElementById('assetSerial').value = asset.serialNo;
+                    document.getElementById('assetLocation').value = asset.location;
+                    document.getElementById('assetStatus').value = asset.status;
+                    document.getElementById('assetPurchaseDate').value = asset.purchaseDate || '';
+                    document.getElementById('assetPrice').value = asset.price;
+                    document.getElementById('assetNotes').value = asset.notes || '';
+                }
+            } else {
+                title.textContent = "Tambah Aset Baru";
+                document.getElementById('assetId').value = '';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('assetModal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('assetId').value;
+            const name = document.getElementById('assetName').value.trim();
+            const category = document.getElementById('assetCategory').value;
+            const serialNo = document.getElementById('assetSerial').value.trim();
+            const location = document.getElementById('assetLocation').value.trim();
+            const status = document.getElementById('assetStatus').value;
+            const purchaseDate = document.getElementById('assetPurchaseDate').value;
+            const price = parseFloat(document.getElementById('assetPrice').value) || 0;
+            const notes = document.getElementById('assetNotes').value.trim();
+
+            if (id) {
+                // Edit existing
+                const index = assets.findIndex(a => a.id === id);
+                if (index !== -1) {
+                    assets[index] = { id, name, category, serialNo, location, status, purchaseDate, price, notes };
+                    showToast("Maklumat aset berjaya dikemaskini!");
+                }
+            } else {
+                // Add new
+                const newAsset = {
+                    id: "AST-" + Date.now().toString().slice(-5),
+                    name,
+                    category,
+                    serialNo,
+                    location,
+                    status,
+                    purchaseDate,
+                    price,
+                    notes
+                };
+                assets.unshift(newAsset);
+                showToast("Aset baru berjaya ditambah!");
+            }
+
+            saveAssets();
+            renderTable();
+            updateStats();
+            closeModal();
+        }
+
+        // View Asset Details
+        function viewAsset(id) {
+            const asset = assets.find(a => a.id === id);
+            if (!asset) return;
+
+            document.getElementById('detailName').textContent = asset.name;
+            document.getElementById('detailCategory').textContent = asset.category;
+            document.getElementById('detailSerial').textContent = asset.serialNo;
+            document.getElementById('detailLocation').textContent = asset.location;
+            document.getElementById('detailDate').textContent = asset.purchaseDate ? formatDate(asset.purchaseDate) : 'Tiada rekod';
+            document.getElementById('detailPrice').textContent = "RM " + parseFloat(asset.price).toLocaleString('ms-MY', {minimumFractionDigits: 2});
+            document.getElementById('detailNotes').textContent = asset.notes || 'Tiada catatan.';
+
+            const detailBadge = document.getElementById('detailBadge');
+            if (asset.status === 'Baik') {
+                detailBadge.className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 inline-block";
+            } else if (asset.status === 'Penyelenggaraan') {
+                detailBadge.className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200 inline-block";
+            } else {
+                detailBadge.className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200 inline-block";
+            }
+            detailBadge.textContent = asset.status;
+
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        // Delete Asset
+        function deleteAsset(id) {
+            const asset = assets.find(a => a.id === id);
+            if (!asset) return;
+
+            if (confirm(`Adakah anda pasti ingin menghapus aset "${asset.name}" (${asset.serialNo})?`)) {
+                assets = assets.filter(a => a.id !== id);
+                saveAssets();
+                renderTable();
+                updateStats();
+                showToast("Aset telah berjaya dihapuskan.");
+            }
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            if (assets.length === 0) {
+                alert("Tiada data aset untuk dieksport.");
+                return;
+            }
+
+            const headers = ["ID", "Nama Aset", "Kategori", "No. Siri", "Lokasi", "Tarikh Beli", "Harga (RM)", "Status", "Catatan"];
+            const rows = assets.map(a => [
+                a.id,
+                `"${a.name.replace(/"/g, '""')}"`,
+                `"${a.category}"`,
+                `"${a.serialNo}"`,
+                `"${a.location}"`,
+                a.purchaseDate || '',
+                a.price,
+                `"${a.status}"`,
+                `"${(a.notes || '').replace(/"/g, '""')}"`
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+                + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Laporan_Aset_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("Fail CSV berjaya dimuat turun!");
+        }
+
+        // Helper: Format Date
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('ms-MY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        // Helper: Escape HTML string
+        function escapeHtml(str) {
+            return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+        }
+
+        // Toast Notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMessage.textContent = message;
+            toastIcon.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>`;
+            lucide.createIcons();
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
